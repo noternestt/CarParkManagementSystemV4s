@@ -1,0 +1,129 @@
+﻿@page "/pricings/edit"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Edit Pricing</h1>
+
+<h2>Pricing</h2>
+<hr />
+@if (Pricing is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Pricing" OnValidSubmit="UpdatePricing" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert" />
+                <input type="hidden" name="Pricing.Id" value="@Pricing.Id" />
+                <div class="mb-3">
+                    <label for="hourlyrate" class="form-label">HourlyRate:</label>
+                    <InputNumber id="hourlyrate" @bind-Value="Pricing.HourlyRate" class="form-control" />
+                    <ValidationMessage For="() => Pricing.HourlyRate" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="weekendrate" class="form-label">WeekendRate:</label>
+                    <InputNumber id="weekendrate" @bind-Value="Pricing.WeekendRate" class="form-control" />
+                    <ValidationMessage For="() => Pricing.WeekendRate" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="locationid" class="form-label">Location:</label>
+                    <input id="locationid" class="form-control" value="@LocationAddress" readonly />
+                    <input type="hidden" name="Pricing.LocationId" value="@Pricing.LocationId" />
+                </div>
+
+                <div class="mb-3"hidden>
+                    <label for="datecreated" class="form-label">DateCreated:</label>
+                    <InputDate id="datecreated" @bind-Value="Pricing.DateCreated" class="form-control" />
+                    <ValidationMessage For="() => Pricing.DateCreated" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="dateupdated" class="form-label">DateUpdated:</label>
+                    <InputDate id="dateupdated" @bind-Value="Pricing.DateUpdated" class="form-control" />
+                    <ValidationMessage For="() => Pricing.DateUpdated" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="createdby" class="form-label">CreatedBy:</label>
+                    <InputText id="createdby" @bind-Value="Pricing.CreatedBy" class="form-control" />
+                    <ValidationMessage For="() => Pricing.CreatedBy" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="updatedby" class="form-label">UpdatedBy:</label>
+                    <InputText id="updatedby" @bind-Value="Pricing.UpdatedBy" class="form-control" />
+                    <ValidationMessage For="() => Pricing.UpdatedBy" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/pricings">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Pricing? Pricing { get; set; }
+
+    private string LocationAddress { get; set; } = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Pricing ??= await context.Pricing.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (Pricing is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+        else
+        {
+            // Fetch location address based on Pricing.LocationId
+            var location = await context.Location.FindAsync(Pricing.LocationId);
+            LocationAddress = location?.Address ?? "Unknown Location";
+        }
+    }
+
+    private async Task UpdatePricing()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Pricing.UpdatedBy = "System";
+        //Set the DateUpdated fields to the current date and time.
+        Pricing.DateUpdated = DateTime.Now;
+        context.Attach(Pricing!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!PricingExists(Pricing!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/pricings");
+    }
+
+    private bool PricingExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        Pricing.UpdatedBy = "System";
+        Pricing.DateUpdated = DateTime.Now;
+        return context.Pricing.Any(e => e.Id == id);
+    }
+}

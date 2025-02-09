@@ -1,0 +1,84 @@
+﻿@page "/pricings/create"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Create Pricing</h1>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Pricing" OnValidSubmit="AddPricing" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+            <div class="mb-3">
+                <label for="hourlyrate" class="form-label">HourlyRate:</label>
+                <InputNumber id="hourlyrate" @bind-Value="Pricing.HourlyRate" class="form-control" />
+                <ValidationMessage For="() => Pricing.HourlyRate" class="text-danger" />
+            </div>
+            <div class="mb-3">
+                <label for="weekendrate" class="form-label">WeekendRate:</label>
+                <InputNumber id="weekendrate" @bind-Value="Pricing.WeekendRate" class="form-control" />
+                <ValidationMessage For="() => Pricing.WeekendRate" class="text-danger" />
+            </div>
+            <div class="mb-3">
+                <label for="locationid" class="form-label">Location:</label>
+                <InputSelect id="LocationId" @bind-Value="Pricing.LocationId" class="form-control">
+                    <option value="">-- Select Location --</option>
+                    @if (Locations != null)
+                    {
+                        foreach (var location in Locations)
+                        {
+                            <option value="@location.Id">@location.Address</option>
+                        }
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Pricing.LocationId" class="text-danger" />
+            </div>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/pricings">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Pricing Pricing { get; set; } = new();
+
+    private CarParkManagementSystemV4Context context = default!;
+    private IList<Location> Locations;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+        LoadAvailableLocations();
+    }
+
+    private void LoadAvailableLocations()
+    {
+        // Fetch all locations that are not already assigned to a pricing
+        var assignedLocationIds = context.Pricing.Select(p => p.LocationId).ToList();
+        Locations = context.Location
+            .Where(loc => !assignedLocationIds.Contains(loc.Id))
+            .ToList();
+    }
+
+    private async Task AddPricing()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Pricing.CreatedBy = "System";
+        Pricing.UpdatedBy = "System";
+        Pricing.DateCreated = DateTime.Now;
+        Pricing.DateUpdated = DateTime.Now;
+        context.Pricing.Add(Pricing);
+        await context.SaveChangesAsync();
+
+        // Refresh the available locations after adding the new pricing
+        LoadAvailableLocations();
+
+        NavigationManager.NavigateTo("/pricings");
+    }
+}

@@ -1,0 +1,57 @@
+﻿@page "/users"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using CarParkManagementSystemV4.Domain
+@using CarParkManagementSystemV4.Data
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@rendermode InteractiveServer
+<PageTitle>Users</PageTitle>
+<div class="page-header text-center mb-4">
+    <h1>Users</h1>
+    <i class="fas fa-users fa-3x mb-3 text-primary"></i>
+    <p class="text-muted">Manage users of the platform. View, modify, or create new user accounts below.</p>
+</div>
+
+<div class="text-end mb-4">
+    <a href="users/create" class="btn btn-primary">
+        <i class="fas fa-user-plus"></i> Add New User
+    </a>
+</div>
+
+<QuickGrid TGridItem="User" Items="Users.AsQueryable()">
+    <PropertyColumn Property="user => user.FullName" Title="Full Name" Sortable="true" />
+    <PropertyColumn Property="user => user.Email" Title="Email" Sortable="true" />
+    <PropertyColumn Property="user => user.DateCreated" Title="Date Created" Sortable="true" />
+    <PropertyColumn Property="user => user.DateUpdated" Title="Date Updated" Sortable="true" />
+
+    <PropertyColumn Property="user => user.FullName" Title="Full Name" />
+    <PropertyColumn Property="user => user.Email" Title="Email" />
+    <TemplateColumn Title="Vehicle(s) License Plate(s)" Context="user">
+        @((user.Vehicles != null && user.Vehicles.Any())
+            ? string.Join(", ", user.Vehicles.Select(v => v.LicensePlate))
+            : "N/A")
+    </TemplateColumn>
+    <PropertyColumn Property="user => user.DateCreated" Title="Date Created" />
+    <PropertyColumn Property="user => user.DateUpdated" Title="Date Updated" />
+    <PropertyColumn Property="user => user.CreatedBy" Title="Created By" />
+    <PropertyColumn Property="user => user.UpdatedBy" Title="Updated By" />
+    <TemplateColumn Title="Actions" Context="user">
+        <a href="@($"users/edit?id={user.Id}")">Edit</a> |
+        <a href="@($"users/details?id={user.Id}")">Details</a> |
+        <a href="@($"users/delete?id={user.Id}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private List<User> Users { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Load all users with their related PaymentMethods and Vehicles
+        Users = await context.User
+            .Include(u => u.Vehicles) // Include related Vehicles
+            .ToListAsync();
+    }
+}

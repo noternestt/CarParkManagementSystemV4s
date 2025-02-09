@@ -1,0 +1,258 @@
+﻿@page "/parkingsessions/edit"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Edit</PageTitle>
+
+<h1>Edit</h1>
+
+<h2>ParkingSession</h2>
+<hr />
+@if (ParkingSession == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="ParkingSession" OnValidSubmit="UpdateParkingSession" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert" />
+                <input type="hidden" name="ParkingSession.Id" value="@ParkingSession.Id" />
+
+                <div class="mb-3">
+                    <label for="date" class="form-label">Date:</label>
+                    <InputDate id="date" @bind-Value="SelectedDate" class="form-control" min="@MinDate" />
+                    <ValidationMessage For="() => ParkingSession.Date" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="starttime" class="form-label">Start Time:</label>
+                    <InputText id="starttime" type="time" @bind-Value="StartTime" class="form-control" />
+                    <ValidationMessage For="() => StartTime" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="duration" class="form-label">Duration (hours):</label>
+                    <InputSelect id="duration" @bind-Value="SelectedDuration" class="form-control">
+                        <option value="0">-- Select Duration --</option>
+                        @for (int i = 1; i <= 24; i++)
+                        {
+                            <option value="@i">@i hour(s)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => SelectedDuration" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="price" class="form-label">Price:</label>
+                    <input id="price" type="text" class="form-control" readonly value="@($"${Price}")" />
+                </div>
+                <div class="mb-3">
+                    <label for="endtime" class="form-label">End Time:</label>
+                    <input id="endtime" type="time" class="form-control" readonly value="@EndTime" />
+                    <ValidationMessage For="() => EndTime" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="status" class="form-label">Status:</label>
+                    <InputText id="status" @bind-Value="ParkingSession.Status" class="form-control" />
+                    <ValidationMessage For="() => ParkingSession.Status" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="locationid" class="form-label">Location:</label>
+                    <span class="form-control">@SelectedLocationAddress</span>
+                </div>
+                <div class="mb-3">
+                    <label for="vehicleid" class="form-label">VehicleId:</label>
+                    <InputSelect id="VehicleId" @bind-Value="ParkingSession.VehicleId" class="form-control">
+                        <option value="">-- Select Vehicle --</option>
+                        @if (Vehicles != null)
+                        {
+                            foreach (var vehicle in Vehicles)
+                            {
+                                <option value="@vehicle.Id">@vehicle.LicensePlate</option>
+                            }
+                        }
+                    </InputSelect>
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/parkingsessions">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    private ParkingSession? ParkingSession { get; set; }
+    private string _startTime = string.Empty;
+    private int _selectedDuration = 0;
+    private DateTime _selectedDate = DateTime.Today;
+    private string userId;
+    private string IdentityUserId = "System";
+    @inject AuthenticationStateProvider AuthenticationStateProvider
+
+    private DateTime SelectedDate
+    {
+        get => _selectedDate;
+        set
+        {
+            _selectedDate = value;
+            ParkingSession.Date = value;
+            UpdatePrice();
+            StateHasChanged();
+        }
+    }
+
+    private double Price { get; set; } = 0.0;
+    private Pricing? LocationPricing;
+    private CarParkManagementSystemV4Context context = default!;
+    private IList<Location> Locations { get; set; } = new List<Location>();
+    private IList<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
+    private string SelectedLocationAddress { get; set; } = string.Empty;
+    private string EndTime { get; set; } = string.Empty;
+    private string MinDate { get; set; } = DateTime.Today.ToString("yyyy-MM-dd");
+
+    private string StartTime
+    {
+        get => _startTime;
+        set
+        {
+            if (_startTime != value)
+            {
+                _startTime = value;
+                UpdateEndTime();
+            }
+        }
+    }
+
+    private int SelectedDuration
+    {
+        get => _selectedDuration;
+        set
+        {
+            if (_selectedDuration != value)
+            {
+                _selectedDuration = value;
+                UpdateEndTime();
+                UpdatePrice();
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        IdentityUserId = user.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(IdentityUserId))
+        {
+            NavigationManager.NavigateTo("/notauthorized");
+            return;
+        }
+
+        context = DbFactory.CreateDbContext();
+        var dbUser = await context.User.FirstOrDefaultAsync(u => u.IdentityUserId == IdentityUserId);
+        if (dbUser == null)
+        {
+            NavigationManager.NavigateTo("/notauthorized");
+            return;
+        }
+        Locations = await context.Location.ToListAsync();
+        Vehicles = await context.Vehicle
+        .Where(v => v.CreatedBy == IdentityUserId)
+        .ToListAsync();
+        ParkingSession = await context.ParkingSession.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (ParkingSession is null)
+        {
+            NavigationManager.NavigateTo("/notfound");
+            return;
+        }
+
+        var location = Locations.FirstOrDefault(l => l.Id == ParkingSession.LocationId);
+        if (location != null)
+        {
+            SelectedLocationAddress = location.Address;
+            LocationPricing = await context.Pricing.FirstOrDefaultAsync(p => p.LocationId == location.Id);
+        }
+
+        SelectedDate = ParkingSession.Date;
+        StartTime = ParkingSession.StartTime.ToString(@"hh\:mm");
+        EndTime = ParkingSession.EndTime.ToString(@"hh\:mm");
+        SelectedDuration = (int)(ParkingSession.EndTime - ParkingSession.StartTime).TotalHours;
+        UpdateEndTime();
+        UpdatePrice();
+    }
+
+    private void UpdateEndTime()
+    {
+        if (TimeSpan.TryParse(StartTime, out var startTime) && SelectedDuration > 0)
+        {
+            var endTimeSpan = startTime.Add(TimeSpan.FromHours(SelectedDuration));
+            EndTime = endTimeSpan.ToString(@"hh\:mm");
+            ParkingSession.EndTime = endTimeSpan;
+        }
+        else
+        {
+            EndTime = "00:00";
+        }
+    }
+
+    private void UpdatePrice()
+    {
+        if (LocationPricing != null && SelectedDuration > 0)
+        {
+            var rate = SelectedDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+                ? LocationPricing.WeekendRate
+                : LocationPricing.HourlyRate;
+            Price = Math.Round(rate * SelectedDuration, 2);
+        }
+        else
+        {
+            Price = 0.0;
+        }
+    }
+
+    private async Task UpdateParkingSession()
+    {
+        if (ParkingSession is null) return;
+
+        using var context = DbFactory.CreateDbContext();
+        ParkingSession.UpdatedBy = IdentityUserId;
+        ParkingSession.DateUpdated = DateTime.Now;
+        context.Attach(ParkingSession).State = EntityState.Modified;
+
+        if (TimeSpan.TryParse(StartTime, out TimeSpan start))
+            ParkingSession.StartTime = start;
+
+        if (TimeSpan.TryParse(EndTime, out TimeSpan end))
+            ParkingSession.EndTime = end;
+
+        ParkingSession.DateUpdated = DateTime.Now;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!context.ParkingSession.Any(e => e.Id == ParkingSession.Id))
+            {
+                NavigationManager.NavigateTo("/notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+        NavigationManager.NavigateTo("/parkingsessions");
+    }
+}

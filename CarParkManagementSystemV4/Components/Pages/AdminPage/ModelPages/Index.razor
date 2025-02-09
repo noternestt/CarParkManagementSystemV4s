@@ -1,0 +1,46 @@
+﻿@page "/models"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using CarParkManagementSystemV4.Domain
+@using CarParkManagementSystemV4.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+
+<PageTitle>Models</PageTitle>
+
+<div class="page-header text-center mb-4">
+    <h1>Models</h1>
+    <i class="fas fa-car-side fa-3x mb-3 text-primary"></i>
+    <p class="text-muted">Manage vehicle models for your system. View, modify, or add new models below.</p>
+</div>
+
+<div class="text-end mb-4">
+    <a href="models/create" class="btn btn-primary">
+        <i class="fas fa-plus-circle"></i> Add New Model
+    </a>
+</div>
+
+<QuickGrid Class="table" Items="context.Model">
+    <PropertyColumn Property="model => model.ModelName" />
+    <PropertyColumn Property="model => model.DateCreated" />
+    <PropertyColumn Property="model => model.DateUpdated" />
+    <PropertyColumn Property="model => model.CreatedBy" />
+    <PropertyColumn Property="model => model.UpdatedBy" />
+
+    <TemplateColumn Context="model">
+        <a href="@($"models/edit?id={model.Id}")">Edit</a> |
+        <a href="@($"models/details?id={model.Id}")">Details</a> |
+        <a href="@($"models/delete?id={model.Id}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private CarParkManagementSystemV4Context context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

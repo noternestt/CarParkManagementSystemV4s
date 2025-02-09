@@ -1,0 +1,144 @@
+﻿@page "/vehicles/edit"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Edit Vehicle</h1>
+
+<h2>Vehicle</h2>
+<hr />
+@if (Vehicle is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Vehicle" OnValidSubmit="UpdateVehicle" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="Vehicle.Id" value="@Vehicle.Id" />
+                <div class="mb-3">
+                    <label for="licenseplate" class="form-label">LicensePlate:</label>
+                    <InputText id="licenseplate" @bind-Value="Vehicle.LicensePlate" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.LicensePlate" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="color" class="form-label">Color:</label>
+                    <InputText id="color" @bind-Value="Vehicle.Color" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.Color" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="userid" class="form-label">UserID:</label>
+                    <InputNumber id="userid" @bind-Value="Vehicle.UserID" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.UserID" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="vehicletypeid" class="form-label">VehicleTypeId:</label>
+                    <InputNumber id="vehicletypeid" @bind-Value="Vehicle.VehicleTypeId" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.VehicleTypeId" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="modelid" class="form-label">ModelId:</label>
+                    <InputNumber id="modelid" @bind-Value="Vehicle.ModelId" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.ModelId" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="datecreated" class="form-label">DateCreated:</label>
+                    <InputDate id="datecreated" @bind-Value="Vehicle.DateCreated" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.DateCreated" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="dateupdated" class="form-label">DateUpdated:</label>
+                    <InputDate id="dateupdated" @bind-Value="Vehicle.DateUpdated" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.DateUpdated" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="createdby" class="form-label">CreatedBy:</label>
+                    <InputText id="createdby" @bind-Value="Vehicle.CreatedBy" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.CreatedBy" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="updatedby" class="form-label">UpdatedBy:</label>
+                    <InputText id="updatedby" @bind-Value="Vehicle.UpdatedBy" class="form-control" />
+                    <ValidationMessage For="() => Vehicle.UpdatedBy" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/vehicles">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Vehicle? Vehicle { get; set; }
+    //Create userId string to store the user id, default value is "System".
+    private string userId = "System";
+
+    //Inject the AuthenticationStateProvider to get the user id.
+    @inject AuthenticationStateProvider authenticationStateProvider
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        var authState = await authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        // Get the userId claim
+        var userIdClaim = user.FindFirst("userId");
+        if (userIdClaim != null)
+        {
+            userId = userIdClaim.Value;
+        }
+        Vehicle ??= await context.Vehicle.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (Vehicle is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateVehicle()
+    {
+        using var context = DbFactory.CreateDbContext();
+        // Set the userId to the UpdatedBy fields.
+        Vehicle.UpdatedBy = userId;
+        //Set the DateUpdated fields to the current date and time.
+        Vehicle.DateUpdated = DateTime.Now;
+        context.Attach(Vehicle!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!VehicleExists(Vehicle!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/vehicles");
+    }
+
+    private bool VehicleExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Vehicle.Any(e => e.Id == id);
+    }
+}

@@ -1,0 +1,122 @@
+﻿@page "/parkingsessions"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using CarParkManagementSystemV4.Domain
+@using CarParkManagementSystemV4.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Parking Sessions</PageTitle>
+
+<div class="page-header text-center mb-4">
+    <h1>Parking Sessions</h1>
+    <i class="fas fa-parking fa-3x mb-3 text-primary"></i>
+    <p class="text-muted">Manage your parking sessions easily. View and modify your sessions below.</p>
+</div>
+
+<QuickGrid Class="table" Items="FilteredParkingSessions">
+    <PropertyColumn Property="parkingsession => parkingsession.User.FullName" Title="User" />
+    <PropertyColumn Property="parkingsession => parkingsession.Date" />
+    <PropertyColumn Property="parkingsession => parkingsession.StartTime" />
+    <PropertyColumn Property="parkingsession => parkingsession.EndTime" />
+    <TemplateColumn Title="Status" Context="parkingsession">
+        @{
+            var currentStatus = parkingsession.Status;
+
+            // Check and update status dynamically
+            if (currentStatus == "Active" && DateTime.Now.TimeOfDay > parkingsession.EndTime)
+            {
+                currentStatus = "Completed";
+                UpdateSessionStatusToCompleted(parkingsession.Id);
+            }
+        }
+        @currentStatus
+    </TemplateColumn>
+    <TemplateColumn Title="Duration (hrs)" Context="parkingsession">
+        @{
+            var duration = (parkingsession.EndTime - parkingsession.StartTime).TotalHours;
+            @($"{duration:F2}")
+        }
+    </TemplateColumn>
+
+    <TemplateColumn Title="Price" Context="parkingsession">
+        @{
+            var locationPricing = context.Pricing.FirstOrDefault(p => p.LocationId == parkingsession.LocationId);
+            if (locationPricing != null && parkingsession.StartTime != null)
+            {
+                bool isWeekend = DateTime.Today.DayOfWeek == DayOfWeek.Saturday || DateTime.Today.DayOfWeek == DayOfWeek.Sunday;
+                double rate = isWeekend ? locationPricing.WeekendRate : locationPricing.HourlyRate;
+                var duration = (parkingsession.EndTime - parkingsession.StartTime).TotalHours;
+                var price = Math.Round(rate * duration, 2);
+                @($"{price:C2}")
+            }
+            else
+            {
+                @("N/A")
+            }
+        }
+    </TemplateColumn>
+
+    @if (isAdmin)
+    {
+        <PropertyColumn Property="parkingsession => parkingsession.UserId" />
+        <PropertyColumn Property="parkingsession => parkingsession.LocationId" />
+        <PropertyColumn Property="parkingsession => parkingsession.VehicleId" />
+        <PropertyColumn Property="parkingsession => parkingsession.DateCreated" />
+        <PropertyColumn Property="parkingsession => parkingsession.DateUpdated" />
+        <PropertyColumn Property="parkingsession => parkingsession.CreatedBy" />
+        <PropertyColumn Property="parkingsession => parkingsession.UpdatedBy" />
+    }
+    <TemplateColumn Context="parkingsession">
+        @{
+            var hasPayment = context.PaymentMethod.Any(pm => pm.ParkingSessionId == parkingsession.Id);
+        }
+        @if (!hasPayment)
+        {
+            <a href="@($"parkingsessions/edit?id={parkingsession.Id}")">Edit</a>
+            <text> | </text>
+            <a href="@($"paymentmethods/create?parkingsessionid={parkingsession.Id}")">Payment</a>
+            <text> | </text>
+        }
+        <a href="@($"parkingsessions/details?id={parkingsession.Id}")">Details</a>
+        <text> | </text>
+        <a href="@($"parkingsessions/delete?id={parkingsession.Id}")">Delete</a>
+    </TemplateColumn>
+
+</QuickGrid>
+
+@code {
+    private CarParkManagementSystemV4Context context = default!;
+    private string userId = string.Empty;
+    private bool isAdmin = false;
+
+    @inject AuthenticationStateProvider authenticationStateProvider
+
+    private IQueryable<ParkingSession> FilteredParkingSessions => isAdmin
+     ? context.ParkingSession.Include(ps => ps.User)
+     : context.ParkingSession.Include(ps => ps.User).Where(e => e.CreatedBy == userId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        context = DbFactory.CreateDbContext();
+        var authState = await authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        userId = user.FindFirst("userId")?.Value ?? string.Empty;
+        isAdmin = user.IsInRole("Administrator");
+    }
+    private async void UpdateSessionStatusToCompleted(int sessionId)
+    {
+        using var dbContext = DbFactory.CreateDbContext();
+
+        // Fetch the session
+        var session = await dbContext.ParkingSession.FirstOrDefaultAsync(ps => ps.Id == sessionId);
+        if (session != null && session.Status == "Active" && DateTime.Now.TimeOfDay > session.EndTime)
+        {
+            session.Status = "Completed";
+            await dbContext.SaveChangesAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

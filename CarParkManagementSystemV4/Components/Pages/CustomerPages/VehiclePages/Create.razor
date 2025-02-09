@@ -1,0 +1,137 @@
+﻿@page "/vehicles/create"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h2>Create Vehicle</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Vehicle" OnValidSubmit="AddVehicle" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <label for="licenseplate" class="form-label">LicensePlate:</label> 
+                <InputText id="licenseplate" @bind-Value="Vehicle.LicensePlate" class="form-control" /> 
+                <ValidationMessage For="() => Vehicle.LicensePlate" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="color" class="form-label">Color:</label> 
+                <InputText id="color" @bind-Value="Vehicle.Color" class="form-control" /> 
+                <ValidationMessage For="() => Vehicle.Color" class="text-danger" /> 
+            </div>             
+            <div class="mb-3">
+                <label for="vehicletypeid" class="form-label">VehicleType:</label> 
+                <InputSelect id="vehicletypeid" @bind-Value="Vehicle.VehicleTypeId" class="form-control">
+                    <option value="">-- Select Vehicle Type --</option>
+                    @if (VehicleTypes != null)
+                    {
+                        foreach (var vehicleType in VehicleTypes)
+                        {
+                            <option value="@vehicleType.Id">
+                                @($"{vehicleType.TypeName} - {vehicleType.Description}")
+                            </option>
+                        }
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Vehicle.VehicleTypeId" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="modelid" class="form-label">Model:</label> 
+                <InputSelect id="modelid" @bind-Value="Vehicle.ModelId" class="form-control">
+                    <option value="">-- Select Model Type --</option>
+                    @if (Models != null)
+                    {
+                        foreach (var model in Models)
+                        {
+                            <option value="@model.Id">@model.ModelName</option>
+                        }
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Vehicle.ModelId" class="text-danger" /> 
+            </div>               
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/vehicles">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Vehicle Vehicle { get; set; } = new();
+
+    // Private fields to store user information
+    private string userId; // Integer User.Id from the database
+    private string IdentityUserId = "System"; // GUID IdentityUserId
+
+    private CarParkManagementSystemV4Context context = default!;
+    private IList<VehicleType> VehicleTypes;
+    private IList<Model> Models;
+
+    // Inject the AuthenticationStateProvider to get the user id
+    @inject AuthenticationStateProvider authenticationStateProvider
+
+    // Override the OnInitialized method to get user details
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Get the logged-in user's IdentityUserId
+        IdentityUserId = user.FindFirst("userId")?.Value;
+
+        if (string.IsNullOrEmpty(IdentityUserId))
+        {
+            // Handle cases where IdentityUserId is not found
+            NavigationManager.NavigateTo("/notauthorized");
+            return;
+        }
+
+        using var context = DbFactory.CreateDbContext();
+
+        // Retrieve the User record from the database using IdentityUserId
+        var dbUser = await context.User.FirstOrDefaultAsync(u => u.IdentityUserId == IdentityUserId);
+
+        if (dbUser == null)
+        {
+            // Handle cases where the user is not found in the database
+            NavigationManager.NavigateTo("/notauthorized");
+            return;
+        }
+
+        // Store the User.Id (integer) for use when creating the vehicle
+        userId = dbUser.Id.ToString();
+
+        // Load other dropdown data
+        Models = context.Model.ToList();
+        VehicleTypes = context.VehicleType.ToList();
+    }
+
+    // Add a new vehicle
+    private async Task AddVehicle()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Assign the UserID (integer) to the Vehicle
+        Vehicle.UserID = int.Parse(userId); // Convert the stored UserId to an integer
+
+        // Set the CreatedBy and UpdatedBy fields using the IdentityUserId (GUID)
+        Vehicle.CreatedBy = IdentityUserId; // Use the GUID
+        Vehicle.UpdatedBy = IdentityUserId;
+
+        // Set the DateCreated and DateUpdated fields
+        Vehicle.DateCreated = DateTime.Now;
+        Vehicle.DateUpdated = DateTime.Now;
+
+        // Add the vehicle to the database
+        context.Vehicle.Add(Vehicle);
+        await context.SaveChangesAsync();
+
+        // Navigate back to the vehicle list
+        NavigationManager.NavigateTo("/vehicles");
+    }
+}

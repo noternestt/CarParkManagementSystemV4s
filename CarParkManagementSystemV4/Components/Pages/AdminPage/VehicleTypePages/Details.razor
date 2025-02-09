@@ -1,0 +1,54 @@
+﻿@page "/vehicletypes/details"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Details of Vehicle Type</h1>
+
+<div>
+    <h2>VehicleType</h2>
+    <hr />
+    @if (vehicletype is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">TypeName</dt>
+            <dd class="col-sm-10">@vehicletype.TypeName</dd>
+            <dt class="col-sm-2">Description</dt>
+            <dd class="col-sm-10">@vehicletype.Description</dd>
+            <dt class="col-sm-2">DateCreated</dt>
+            <dd class="col-sm-10">@vehicletype.DateCreated</dd>
+            <dt class="col-sm-2">DateUpdated</dt>
+            <dd class="col-sm-10">@vehicletype.DateUpdated</dd>
+            <dt class="col-sm-2">CreatedBy</dt>
+            <dd class="col-sm-10">@vehicletype.CreatedBy</dd>
+            <dt class="col-sm-2">UpdatedBy</dt>
+            <dd class="col-sm-10">@vehicletype.UpdatedBy</dd>
+        </dl>
+        <div>
+            <a href="@($"/vehicletypes/edit?id={vehicletype.Id}")">Edit</a> |
+            <a href="@($"/vehicletypes")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private VehicleType? vehicletype;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        vehicletype = await context.VehicleType.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (vehicletype is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

@@ -1,0 +1,98 @@
+﻿@page "/users/edit"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Edit User</h1>
+
+<h2>User</h2>
+<hr />
+@if (User is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="User" OnValidSubmit="UpdateUser" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="User.Id" value="@User.Id" />
+                <div class="mb-3">
+                    <label for="fullname" class="form-label">FullName:</label>
+                    <InputText id="fullname" @bind-Value="User.FullName" class="form-control" />
+                    <ValidationMessage For="() => User.FullName" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email:</label>
+                    <InputText id="email" @bind-Value="User.Email" class="form-control" />
+                    <ValidationMessage For="() => User.Email" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="identityuserid" class="form-label">IdentityUserId:</label>
+                    <InputText id="identityuserid" @bind-Value="User.IdentityUserId" class="form-control" />
+                    <ValidationMessage For="() => User.IdentityUserId" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/users">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private User? User { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        User ??= await context.User.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (User is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateUser()
+    {
+        using var context = DbFactory.CreateDbContext();
+        User.UpdatedBy ="System";
+        //Set the DateUpdated fields to the current date and time.
+        User.DateUpdated = DateTime.Now;
+        context.Attach(User!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!UserExists(User!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/users");
+    }
+
+    private bool UserExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.User.Any(e => e.Id == id);
+    }
+}

@@ -1,0 +1,127 @@
+﻿@page "/"
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+<PageTitle>Home</PageTitle>
+
+<h1 class="text-center mt-4">Welcome to ParkEase Solutions Pte Ltd</h1>
+<p class="text-center text-muted">Effortless Parking Management, Anytime, Anywhere</p>
+
+<div class="container mt-5">
+    <!-- Features Section -->
+    <div class="row">
+        <div class="col-md-4 text-center">
+            <i class="fas fa-parking fa-3x mb-3 text-primary"></i>
+            <h3>Easy Parking Management</h3>
+            <p>Streamline parking with our advanced and easy-to-use platform for users and administrators.</p>
+        </div>
+        <div class="col-md-4 text-center">
+            <i class="fas fa-map-marker-alt fa-3x mb-3 text-success"></i>
+            <h3>Real-Time Tracking</h3>
+            <p>Locate and track available parking lots in real-time with our smart tracking feature.</p>
+        </div>
+        <div class="col-md-4 text-center">
+            <i class="fas fa-wallet fa-3x mb-3 text-warning"></i>
+            <h3>Secure Payments</h3>
+            <p>Make secure payments for your parking with multiple payment options.</p>
+        </div>
+    </div>
+
+    <!-- About Section -->
+    <div class="mt-5 bg-light p-5 rounded shadow-sm">
+        <h3 class="text-center">About ParkEase Solutions Pte Ltd</h3>
+        <p class="text-center">
+            ParkEase Solutions Pte Ltd is committed to making parking effortless for everyone.
+            With our Real-Time Parking Lot Availability, drivers can find open parking lots in urban areas quickly.
+            Our Automated Cashless Payment Methods ensure secure, fast, and efficient transactions.
+            Additionally, we pride ourselves on Customer Support, with a dedicated team ready to assist you.
+            ParkEase Solutions is here to ensure your parking experience is seamless, efficient, and stress-free.
+        </p>
+    </div>
+</div>
+
+<div class="container mt-5">
+    <div class="row align-items-start">
+        <!-- Help Section -->
+        <div class="col-md-6">
+            <div class="help-section text-center p-4 bg-light rounded shadow-sm">
+                <h4>Need Help?</h4>
+                <p class="text-muted">Feeling lost? Learn how to get started with ParkEase Solutions.</p>
+                <a href="/help" class="btn btn-info">
+                    <i class="fas fa-info-circle me-2"></i> Visit the Help Page
+                </a>
+            </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="col-md-6">
+            <h3 class="text-center">Frequently Asked Questions</h3>
+            <div class="accordion mt-4" id="faqAccordion">
+                <!-- FAQ 1 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faqHeading1">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse1" aria-expanded="true" aria-controls="faqCollapse1">
+                            <i class="fas fa-question-circle me-2"></i> How does ParkEase work?
+                        </button>
+                    </h2>
+                    <div id="faqCollapse1" class="accordion-collapse collapse show" aria-labelledby="faqHeading1" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            ParkEase uses real-time tracking to help you find parking spots quickly and provides cashless payment options for added convenience.
+                        </div>
+                    </div>
+                </div>
+                <!-- FAQ 2 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faqHeading2">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse2" aria-expanded="false" aria-controls="faqCollapse2">
+                            <i class="fas fa-lock me-2"></i> Is my payment information secure?
+                        </button>
+                    </h2>
+                    <div id="faqCollapse2" class="accordion-collapse collapse" aria-labelledby="faqHeading2" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Yes, your payment information is secure. ParkEase uses encrypted and secure payment gateways to ensure your data is safe.
+                        </div>
+                    </div>
+                </div>
+                <!-- FAQ 3 -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faqHeading3">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse3" aria-expanded="false" aria-controls="faqCollapse3">
+                            <i class="fas fa-parking me-2"></i> How do I find available parking lots?
+                        </button>
+                    </h2>
+                    <div id="faqCollapse3" class="accordion-collapse collapse" aria-labelledby="faqHeading3" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            ParkEase provides real-time tracking of available parking lots through our app or website, so you can find a spot quickly.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login and Register Section -->
+    <div class="mt-4 text-center">
+        <p class="fw-bold fs-4">Ready to transform your parking experience?</p>
+        <p class="lead">Join ParkEase Solutions today and experience parking like never before.</p>
+        <button class="btn btn-primary btn-lg m-2" @onclick="NavigateToLogin">
+            <i class="fas fa-sign-in-alt"></i> Login
+        </button>
+        <button class="btn btn-success btn-lg m-2" @onclick="NavigateToRegister">
+            <i class="fas fa-user-plus"></i> Register
+        </button>
+    </div>
+</div>
+
+
+
+@code {
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/Account/Login");
+    }
+
+    private void NavigateToRegister()
+    {
+        Navigation.NavigateTo("/Account/Register");
+    }
+}

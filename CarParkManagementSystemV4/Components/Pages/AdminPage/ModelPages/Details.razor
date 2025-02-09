@@ -1,0 +1,52 @@
+﻿@page "/models/details"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Details of Model</h1>
+
+<div>
+    <h2>Model</h2>
+    <hr />
+    @if (model is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">ModelName</dt>
+            <dd class="col-sm-10">@model.ModelName</dd>
+            <dt class="col-sm-2">DateCreated</dt>
+            <dd class="col-sm-10">@model.DateCreated</dd>
+            <dt class="col-sm-2">DateUpdated</dt>
+            <dd class="col-sm-10">@model.DateUpdated</dd>
+            <dt class="col-sm-2">CreatedBy</dt>
+            <dd class="col-sm-10">@model.CreatedBy</dd>
+            <dt class="col-sm-2">UpdatedBy</dt>
+            <dd class="col-sm-10">@model.UpdatedBy</dd>
+        </dl>
+        <div>
+            <a href="@($"/models/edit?id={model.Id}")">Edit</a> |
+            <a href="@($"/models")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Model? model;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        model = await context.Model.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (model is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

@@ -1,0 +1,70 @@
+﻿@page "/vehicles"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using CarParkManagementSystemV4.Domain
+@using CarParkManagementSystemV4.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+
+<PageTitle>Vehicles</PageTitle>
+<div class="page-header text-center mb-4">
+    <h1>Vehicles</h1>
+    <i class="fas fa-car fa-3x mb-3 text-primary"></i>
+    <p class="text-muted">Manage your vehicles with ease. Add, view, or modify your vehicle details below.</p>
+</div>
+<div class="text-end mb-4">
+    <a href="vehicles/create" class="btn btn-primary">
+        <i class="fas fa-plus-circle"></i> Add New Vehicle
+    </a>
+</div>
+
+<QuickGrid Class="table" Items="FilteredVehicle">
+    <PropertyColumn Property="vehicle => vehicle.LicensePlate" />
+    <PropertyColumn Property="vehicle => vehicle.Color" />
+    <PropertyColumn Property="vehicle => vehicle.User.FullName" Title="User" />
+    <PropertyColumn Property="vehicle => vehicle.Model.ModelName" Title="Vehicle Type" />
+
+    
+    @if (isAdmin)
+    {
+        <PropertyColumn Property="vehicle => vehicle.UserID" />
+        <PropertyColumn Property="vehicle => vehicle.VehicleTypeId" />
+        <PropertyColumn Property="vehicle => vehicle.ModelId" />
+        <PropertyColumn Property="vehicle => vehicle.DateCreated" />
+        <PropertyColumn Property="vehicle => vehicle.DateUpdated" />
+        <PropertyColumn Property="vehicle => vehicle.CreatedBy" />    
+        <PropertyColumn Property="vehicle => vehicle.UpdatedBy" />
+    }
+    <TemplateColumn Context="vehicle">
+        <a href="@($"vehicles/edit?id={vehicle.Id}")">Edit</a> |
+        <a href="@($"vehicles/details?id={vehicle.Id}")">Details</a> |
+        <a href="@($"vehicles/delete?id={vehicle.Id}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private CarParkManagementSystemV4Context context = default!;
+
+    private string userId = string.Empty;
+    private bool isAdmin = false;
+    @inject AuthenticationStateProvider authenticationStateProvider
+    // Filter bookings by userId
+    private IQueryable<Vehicle> FilteredVehicle => isAdmin
+     ? context.Vehicle.Include(v => v.User).Include(v => v.Model) //user visibility
+     : context.Vehicle.Include(v => v.User).Include(v => v.Model).Where(e => e.CreatedBy == userId); //admin visibility
+
+    protected override async Task OnInitializedAsync()
+    {
+        context = DbFactory.CreateDbContext();
+
+        // Fetch the authentication state
+        var authState = await authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Extract user information
+        userId = user.FindFirst("userId")?.Value ?? string.Empty;
+        isAdmin = user.IsInRole("Administrator");
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

@@ -1,0 +1,219 @@
+﻿@page "/Search"
+@using CarParkManagementSystemV4.Domain
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider authenticationStateProvider
+@rendermode InteractiveServer
+<PageTitle>Search</PageTitle>
+
+<div class="page-header mb-4">
+    <div class="text-center">
+        <h1>Search Locations</h1>
+        <i class="fas fa-search-location fa-3x mb-3 text-primary"></i>
+        <p class="text-muted">Easily search for parking locations near you and view your visited locations below.</p>
+    </div>
+</div>
+
+<div>
+    <input type="text" class="form-control" @bind="SearchTerm" placeholder="Enter address or postal code..." />
+    <button class="btn btn-primary mt-2" @onclick="PerformSearch">Search</button>
+</div>
+
+<div>
+    @if (SearchResults != null && SearchResults.Count > 0)
+    {
+        <div class="mt-3">
+            @foreach (var location in SearchResults)
+            {
+                <button class="btn btn-secondary d-block w-100 mb-2" @onclick="() => AddVisitedLocation(location)">
+                    @location.Address, Postal Code: @location.PostalCode
+                    <span class="badge bg-info">
+                        Available Slots: @(AvailableSlots.ContainsKey(location.Id) ? $"{AvailableSlots[location.Id]}/{location.TotalSlots}" : "Loading...")
+                    </span>
+                </button>
+            }
+        </div>
+    }
+    else if (SearchResults != null && SearchResults.Count == 0 && !string.IsNullOrWhiteSpace(SearchTerm))
+    {
+        <p>No locations found for query "@SearchTerm".</p>
+    }
+</div>
+
+<div class="mt-4">
+    <h4>Visited Locations</h4>
+    <ul>
+        @if (ClickedCarparks.Any())
+        {
+            @foreach (var visited in ClickedCarparks)
+            {
+                <li>@visited.Address, Postal Code: @visited.PostalCode</li>
+            }
+            <button class="btn btn-danger mt-2" @onclick="ClearVisitedLocations">Clear Visited Locations</button>
+        }
+        else
+        {
+            <p>No visited locations yet.</p>
+        }
+    </ul>
+</div>
+
+
+@code {
+    private string SearchTerm { get; set; } = string.Empty;
+    private List<Location> SearchResults { get; set; } = new();
+    private List<Location> ClickedCarparks { get; set; } = new();
+    private Dictionary<int, int> AvailableSlots { get; set; } = new(); // Maps LocationId to Available Slots
+    private string IdentityUserId = "System";
+    private bool IsAdmin { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        IdentityUserId = user.FindFirst("userId")?.Value;
+
+        // Check if the user is an admin
+        IsAdmin = user.IsInRole("Administrator"); // Replace "Admin" with your admin role name
+
+        // If neither IdentityUserId is found nor the user is an admin, redirect to unauthorized
+        if (string.IsNullOrEmpty(IdentityUserId) && !IsAdmin)
+        {
+            Navigation.NavigateTo("/notauthorized");
+            return;
+        }
+
+        await LoadVisitedLocations();
+    }
+
+    private async Task LoadVisitedLocations()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        if (IsAdmin)
+        {
+            // If the user is an admin, load all locations or apply admin-specific logic
+            ClickedCarparks = await context.Location
+                .Select(location => new Location
+                    {
+                        Id = location.Id,
+                        Address = location.Address,
+                        PostalCode = location.PostalCode
+                    })
+                .ToListAsync();
+        }
+        else
+        {
+            // If the user is a regular user, load their visited locations
+            var dbUser = await context.User.FirstOrDefaultAsync(u => u.IdentityUserId == IdentityUserId);
+
+            if (dbUser != null)
+            {
+                ClickedCarparks = await context.VisitedLocation
+                    .Where(vl => vl.UserId == dbUser.Id)
+                    .Select(vl => new Location
+                        {
+                            Id = vl.LocationId,
+                            Address = vl.Location.Address,
+                            PostalCode = vl.Location.PostalCode
+                        })
+                    .ToListAsync();
+            }
+        }
+    }
+    private async Task AddVisitedLocation(Location location)
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var dbUser = await context.User.FirstOrDefaultAsync(u => u.IdentityUserId == IdentityUserId);
+
+        if (dbUser != null)
+        {
+            if (!ClickedCarparks.Any(c => c.Id == location.Id))
+            {
+                var visitedLocation = new VisitedLocations
+                    {
+                        UserId = dbUser.Id,
+                        LocationId = location.Id
+                    };
+
+                context.VisitedLocation.Add(visitedLocation);
+                await context.SaveChangesAsync();
+
+                ClickedCarparks.Add(location);
+            }
+        }
+
+        Navigation.NavigateTo($"/parkingsessions/create?locationId={location.Id}");
+    }
+    private async Task ClearVisitedLocations()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        // Fetch the logged-in user's UserId from the database
+        var dbUser = await context.User.FirstOrDefaultAsync(u => u.IdentityUserId == IdentityUserId);
+
+        if (dbUser != null)
+        {
+            // Remove all visited locations for this user
+            var userVisitedLocations = context.VisitedLocation.Where(vl => vl.UserId == dbUser.Id);
+            context.VisitedLocation.RemoveRange(userVisitedLocations);
+
+            await context.SaveChangesAsync();
+        }
+
+        // Clear the local ClickedCarparks list for immediate UI update
+        ClickedCarparks.Clear();
+        StateHasChanged();
+    }
+
+    private async Task PerformSearch()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchTerm))
+        {
+            using var context = DbFactory.CreateDbContext();
+            SearchResults = await context.Location
+                .Where(location => location.Address.Contains(SearchTerm) || location.PostalCode.ToString().Contains(SearchTerm))
+                .ToListAsync();
+
+            // Calculate Available Slots for Each Location
+            foreach (var location in SearchResults)
+            {
+                AvailableSlots[location.Id] = await GetAvailableSlotsAsync(location.Id);
+            }
+        }
+        else
+        {
+            SearchResults.Clear();
+            AvailableSlots.Clear();
+        }
+    }
+
+
+     private async Task<int> GetAvailableSlotsAsync(int locationId)
+     {
+         using var context = DbFactory.CreateDbContext();
+
+        //Get the total slots for the location
+         var location = await context.Location.FirstOrDefaultAsync(l => l.Id == locationId);
+         if (location == null) return 0;
+
+         int totalSlots = location.TotalSlots;
+
+    //     Get the current active sessions for the location
+        var occupiedSlots = await context.ParkingSession
+       .Where(ps => ps.LocationId == locationId
+                && ps.Date == DateTime.Today
+                && ps.StartTime <= DateTime.Now.TimeOfDay
+                && ps.EndTime > DateTime.Now.TimeOfDay
+                && ps.Status == "Active") // Add this condition
+       .CountAsync();
+
+
+    //     Calculate available slots
+     return totalSlots - occupiedSlots;
+     }
+
+}

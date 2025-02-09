@@ -1,0 +1,228 @@
+﻿@page "/paymentmethods/create"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Create Payment Method</PageTitle>
+
+<h1>Create Payment Method</h1>
+<hr />
+
+@if (ParkingSession != null)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Parking Session Details</h5>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-4">User:</dt>
+                <dd class="col-sm-8">@ParkingSession.User?.FullName</dd>
+
+                <dt class="col-sm-4">Date:</dt>
+                <dd class="col-sm-8">@ParkingSession.Date.ToString("yyyy-MM-dd")</dd>
+
+                <dt class="col-sm-4">Start Time:</dt>
+                <dd class="col-sm-8">@ParkingSession.StartTime.ToString(@"hh\:mm")</dd>
+
+                <dt class="col-sm-4">End Time:</dt>
+                <dd class="col-sm-8">@ParkingSession.EndTime.ToString(@"hh\:mm")</dd>
+
+                <dt class="col-sm-4">Duration (hrs):</dt>
+                <dd class="col-sm-8">@($"{Duration:F2}")</dd>
+
+                <dt class="col-sm-4">Status:</dt>
+                <dd class="col-sm-8">@ParkingSession.Status</dd>
+
+                <dt class="col-sm-4">Vehicle:</dt>
+                <dd class="col-sm-8">
+                    @if (Vehicle != null)
+                    {
+                        @Vehicle.LicensePlate
+                    }
+                    else
+                    {
+                        <span class="text-danger">N/A</span>
+                    }
+                </dd>
+
+                <dt class="col-sm-4">Location:</dt>
+                <dd class="col-sm-8">
+                    @if (Location != null)
+                    {
+                        @Location.Address
+                    }
+                    else
+                    {
+                        <span class="text-danger">N/A</span>
+                    }
+                </dd>
+
+                <dt class="col-sm-4">Price:</dt>
+                <dd class="col-sm-8">@($"{TotalPrice:C2}")</dd>
+            </dl>
+        </div>
+    </div>
+}
+else
+{
+    <p class="text-danger">Parking session details not found.</p>
+}
+
+<div class="row">
+    <div class="col-md-4">
+        <EditForm Model="PaymentMethod" OnValidSubmit="AddPaymentMethod">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert" />
+
+            <div class="mb-3">
+                <label for="cardnumber" class="form-label">Card Number:</label>
+                <InputNumber id="cardnumber" @bind-Value="PaymentMethod.CardNumber" class="form-control" />
+                <ValidationMessage For="() => PaymentMethod.CardNumber" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="cardholdername" class="form-label">Card Holder Name:</label>
+                <InputText id="cardholdername" @bind-Value="PaymentMethod.CardHolderName" class="form-control" />
+                <ValidationMessage For="() => PaymentMethod.CardHolderName" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="expirydate" class="form-label">Expiry Date:</label>
+                <InputText id="expirydate" @bind-Value="PaymentMethod.ExpiryDate" class="form-control" />
+                <ValidationMessage For="() => PaymentMethod.ExpiryDate" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="cvv" class="form-label">CVV:</label>
+                <InputText id="cvv" @bind-Value="PaymentMethod.CVV" class="form-control" />
+                <ValidationMessage For="() => PaymentMethod.CVV" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="paymenttype" class="form-label">Payment Type:</label>
+                <InputText id="paymenttype" @bind-Value="PaymentMethod.PaymentType" class="form-control" />
+                <ValidationMessage For="() => PaymentMethod.PaymentType" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="provider" class="form-label">Provider:</label>
+                <InputText id="provider" @bind-Value="PaymentMethod.Provider" class="form-control" />
+                <ValidationMessage For="() => PaymentMethod.Provider" class="text-danger" />
+            </div>
+
+            <div class="mb-3">
+                <label for="parkingsessionid" class="form-label">Parking Session ID:</label>
+                <InputNumber id="parkingsessionid" @bind-Value="PaymentMethod.ParkingSessionId" class="form-control" readonly />
+                <ValidationMessage For="() => PaymentMethod.ParkingSessionId" class="text-danger" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/paymentmethods">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? ParkingSessionId { get; set; }
+
+    private PaymentMethod PaymentMethod { get; set; } = new();
+    private ParkingSession? ParkingSession { get; set; } // Holds fetched ParkingSession details
+    private string userId;
+    private string IdentityUserId = "System";
+    private Vehicle? Vehicle { get; set; }
+    private Location? Location { get; set; }
+    private double Duration = 0.0;
+    private double TotalPrice = 0.0;
+
+    @inject AuthenticationStateProvider authenticationStateProvider
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        IdentityUserId = user.FindFirst("userId")?.Value;
+
+        if (string.IsNullOrEmpty(IdentityUserId))
+        {
+            NavigationManager.NavigateTo("/notauthorized");
+            return;
+        }
+
+        using var context = DbFactory.CreateDbContext();
+        var dbUser = await context.User.FirstOrDefaultAsync(u => u.IdentityUserId == IdentityUserId);
+
+        if (dbUser == null)
+        {
+            NavigationManager.NavigateTo("/notauthorized");
+            return;
+        }
+
+        userId = dbUser.Id.ToString();
+
+        // Retrieve ParkingSession details if ID is provided
+        if (ParkingSessionId.HasValue)
+        {
+            ParkingSession = await context.ParkingSession
+                .Include(ps => ps.User) // Fetch User details
+                .FirstOrDefaultAsync(ps => ps.Id == ParkingSessionId.Value);
+
+            if (ParkingSession != null)
+            {
+                PaymentMethod.ParkingSessionId = ParkingSession.Id;
+
+                // Calculate Duration
+                Duration = (ParkingSession.EndTime - ParkingSession.StartTime).TotalHours;
+
+                // Fetch Vehicle details
+                Vehicle = await context.Vehicle.FirstOrDefaultAsync(v => v.Id == ParkingSession.VehicleId);
+
+                // Fetch Location details
+                Location = await context.Location.FirstOrDefaultAsync(l => l.Id == ParkingSession.LocationId);
+
+                // Calculate Total Price
+                var locationPricing = await context.Pricing.FirstOrDefaultAsync(p => p.LocationId == ParkingSession.LocationId);
+                if (locationPricing != null)
+                {
+                    bool isWeekend = DateTime.Today.DayOfWeek == DayOfWeek.Saturday || DateTime.Today.DayOfWeek == DayOfWeek.Sunday;
+                    double rate = isWeekend ? locationPricing.WeekendRate : locationPricing.HourlyRate;
+                    TotalPrice = Math.Round(rate * Duration, 2);
+                }
+            }
+        }
+    }
+
+    private async Task AddPaymentMethod()
+    {
+        using var context = DbFactory.CreateDbContext();
+        PaymentMethod.UserId = int.Parse(userId);
+        PaymentMethod.CreatedBy = IdentityUserId;
+        PaymentMethod.UpdatedBy = IdentityUserId;
+        PaymentMethod.DateCreated = DateTime.Now;
+        PaymentMethod.DateUpdated = DateTime.Now;
+
+        if (ParkingSessionId.HasValue)
+        {
+            PaymentMethod.ParkingSessionId = ParkingSessionId.Value;
+
+            // Fetch the Parking Session and update status
+            var session = await context.ParkingSession.FirstOrDefaultAsync(ps => ps.Id == ParkingSessionId.Value);
+            if (session != null)
+            {
+                session.Status = "Active"; // Change status to Active when payment is made
+                session.DateUpdated = DateTime.Now;
+            }
+        }
+
+        context.PaymentMethod.Add(PaymentMethod);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/paymentmethods");
+    }
+
+}

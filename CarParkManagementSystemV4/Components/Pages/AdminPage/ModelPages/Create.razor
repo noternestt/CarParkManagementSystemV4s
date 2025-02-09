@@ -1,0 +1,46 @@
+﻿@page "/models/create"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Create Model</h1>
+
+<h2>Model</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Model" OnValidSubmit="AddModel" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <label for="modelname" class="form-label">ModelName:</label> 
+                <InputText id="modelname" @bind-Value="Model.ModelName" class="form-control" /> 
+                <ValidationMessage For="() => Model.ModelName" class="text-danger" /> 
+            </div>                
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/models">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Model Model { get; set; } = new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddModel()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Model.CreatedBy = "System";
+        Model.UpdatedBy = "System";
+        Model.DateCreated = DateTime.Now;
+        Model.DateUpdated = DateTime.Now;
+        context.Model.Add(Model);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/models");
+    }
+}

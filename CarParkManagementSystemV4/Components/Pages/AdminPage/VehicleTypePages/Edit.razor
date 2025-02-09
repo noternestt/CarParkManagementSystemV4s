@@ -1,0 +1,115 @@
+﻿@page "/vehicletypes/edit"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<h1>Edit Vehicle Type</h1>
+
+<h2>VehicleType</h2>
+<hr />
+@if (VehicleType is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="VehicleType" OnValidSubmit="UpdateVehicleType" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="VehicleType.Id" value="@VehicleType.Id" />
+                <div class="mb-3">
+                    <label for="typename" class="form-label">TypeName:</label>
+                    <InputText id="typename" @bind-Value="VehicleType.TypeName" class="form-control" />
+                    <ValidationMessage For="() => VehicleType.TypeName" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label>
+                    <InputText id="description" @bind-Value="VehicleType.Description" class="form-control" />
+                    <ValidationMessage For="() => VehicleType.Description" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="datecreated" class="form-label">DateCreated:</label>
+                    <InputDate id="datecreated" @bind-Value="VehicleType.DateCreated" class="form-control" />
+                    <ValidationMessage For="() => VehicleType.DateCreated" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="dateupdated" class="form-label">DateUpdated:</label>
+                    <InputDate id="dateupdated" @bind-Value="VehicleType.DateUpdated" class="form-control" />
+                    <ValidationMessage For="() => VehicleType.DateUpdated" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="createdby" class="form-label">CreatedBy:</label>
+                    <InputText id="createdby" @bind-Value="VehicleType.CreatedBy" class="form-control" />
+                    <ValidationMessage For="() => VehicleType.CreatedBy" class="text-danger" />
+                </div>
+                <div class="mb-3"hidden>
+                    <label for="updatedby" class="form-label">UpdatedBy:</label>
+                    <InputText id="updatedby" @bind-Value="VehicleType.UpdatedBy" class="form-control" />
+                    <ValidationMessage For="() => VehicleType.UpdatedBy" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/vehicletypes">Back to List</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private VehicleType? VehicleType { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        VehicleType ??= await context.VehicleType.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (VehicleType is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateVehicleType()
+    {
+        using var context = DbFactory.CreateDbContext();
+        VehicleType.UpdatedBy = "System";
+        //Set the DateUpdated fields to the current date and time.
+        VehicleType.DateUpdated = DateTime.Now;
+        context.Attach(VehicleType!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!VehicleTypeExists(VehicleType!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/vehicletypes");
+    }
+
+    private bool VehicleTypeExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.VehicleType.Any(e => e.Id == id);
+    }
+}

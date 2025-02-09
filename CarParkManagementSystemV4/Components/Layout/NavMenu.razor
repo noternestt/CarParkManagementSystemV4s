@@ -1,0 +1,119 @@
+﻿@implements IDisposable
+@inject NavigationManager NavigationManager
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">ParkEase Solutions</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <AuthorizeView>
+            <Authorized>
+            <AuthorizeView Roles="User" Context="innerContext">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="/help">
+                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Help
+                        </NavLink>
+                    </div>
+                <div class="nav-item px-3">
+                     <NavLink class="nav-link" href="/Search">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Search
+                     </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="vehicles">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Vehicles
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="parkingsessions">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Parking
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="paymentmethods">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Payment Method
+                    </NavLink>
+                </div>
+                </AuthorizeView>
+            <AuthorizeView Roles="Administrator" Context="innerContext">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="/Search">
+                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Search
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="users">
+                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Users
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="locations">
+                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Location
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="pricings">
+                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Pricing
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="vehicletypes">
+                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Vehicle Type
+                        </NavLink>
+                    </div>
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="models">
+                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> Model
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Manage">
+                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <button type="submit" class="nav-link">
+                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private string? currentUrl;
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+}

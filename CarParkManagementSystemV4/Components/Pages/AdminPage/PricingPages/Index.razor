@@ -1,0 +1,51 @@
+﻿@page "/pricings"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using CarParkManagementSystemV4.Domain
+@using CarParkManagementSystemV4.Data
+@inject IDbContextFactory<CarParkManagementSystemV4Context> DbFactory
+
+<PageTitle>Pricing Management</PageTitle>
+
+<div class="page-header text-center mb-4">
+    <h1>Pricing</h1>
+    <i class="fas fa-money-bill-wave fa-3x mb-3 text-primary"></i>
+    <p class="text-muted">Manage pricing structures for parking locations. View, modify, or add new pricing tiers below.</p>
+</div>
+
+<div class="text-end mb-4">
+    <a href="pricings/create" class="btn btn-primary">
+        <i class="fas fa-plus-circle"></i> Add New Pricing Plan
+    </a>
+</div>
+
+<QuickGrid TGridItem="Pricing" Class="table" Items="Pricings.AsQueryable()">
+    <PropertyColumn Property="pricing => pricing.HourlyRate" Title="Hourly Rate" />
+    <PropertyColumn Property="pricing => pricing.WeekendRate" Title="Weekend Rate" />
+    <PropertyColumn Property="pricing => pricing.Location.Address" Title="Location Address" />
+    <PropertyColumn Property="pricing => pricing.DateCreated" Title="Date Created" />
+    <PropertyColumn Property="pricing => pricing.DateUpdated" Title="Date Updated" />
+    <PropertyColumn Property="pricing => pricing.CreatedBy" Title="Created By" />
+    <PropertyColumn Property="pricing => pricing.UpdatedBy" Title="Updated By" />
+
+    <TemplateColumn Title="Actions" Context="pricing">
+        <a href="@($"pricings/edit?id={pricing.Id}")">Edit</a> |
+        <a href="@($"pricings/details?id={pricing.Id}")">Details</a> |
+        <a href="@($"pricings/delete?id={pricing.Id}")">Delete</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private List<Pricing> Pricings { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Create a new DbContext instance for fetching data
+        using var context = DbFactory.CreateDbContext();
+
+        // Include the related Location data
+        Pricings = await context.Pricing
+            .Include(p => p.Location) // Eager load Location
+            .ToListAsync();
+    }
+}

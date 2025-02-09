@@ -1,0 +1,66 @@
+﻿@page "/parkingsessions/details"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>ParkingSession</h2>
+    <hr />
+    @if (parkingsession is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <dl class="row">
+            <dt class="col-sm-2">Date</dt>
+            <dd class="col-sm-10">@parkingsession.Date</dd>
+            <dt class="col-sm-2">StartTime</dt>
+            <dd class="col-sm-10">@parkingsession.StartTime</dd>
+            <dt class="col-sm-2">EndTime</dt>
+            <dd class="col-sm-10">@parkingsession.EndTime</dd>
+            <dt class="col-sm-2">Status</dt>
+            <dd class="col-sm-10">@parkingsession.Status</dd>
+            <dt class="col-sm-2">UserId</dt>
+            <dd class="col-sm-10">@parkingsession.UserId</dd>
+            <dt class="col-sm-2">LocationId</dt>
+            <dd class="col-sm-10">@parkingsession.LocationId</dd>
+            <dt class="col-sm-2">VehicleId</dt>
+            <dd class="col-sm-10">@parkingsession.VehicleId</dd>
+            <dt class="col-sm-2">DateCreated</dt>
+            <dd class="col-sm-10">@parkingsession.DateCreated</dd>
+            <dt class="col-sm-2">DateUpdated</dt>
+            <dd class="col-sm-10">@parkingsession.DateUpdated</dd>
+            <dt class="col-sm-2">CreatedBy</dt>
+            <dd class="col-sm-10">@parkingsession.CreatedBy</dd>
+            <dt class="col-sm-2">UpdatedBy</dt>
+            <dd class="col-sm-10">@parkingsession.UpdatedBy</dd>
+        </dl>
+        <div>
+            <a href="@($"/parkingsessions")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private ParkingSession? parkingsession;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        parkingsession = await context.ParkingSession.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (parkingsession is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

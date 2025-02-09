@@ -1,0 +1,95 @@
+﻿@page "/parkingsessions/delete"
+@using Microsoft.EntityFrameworkCore
+@using CarParkManagementSystemV4.Domain
+@inject IDbContextFactory<CarParkManagementSystemV4.Data.CarParkManagementSystemV4Context> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Delete</PageTitle>
+
+<h1>Delete</h1>
+
+<p>Are you sure you want to delete this?</p>
+<div>
+    <h2>ParkingSession</h2>
+    <hr />
+    @if (parkingsession is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Date</dt>
+            <dd class="col-sm-10">@parkingsession.Date</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">StartTime</dt>
+            <dd class="col-sm-10">@parkingsession.StartTime</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">EndTime</dt>
+            <dd class="col-sm-10">@parkingsession.EndTime</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Status</dt>
+            <dd class="col-sm-10">@parkingsession.Status</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">UserId</dt>
+            <dd class="col-sm-10">@parkingsession.UserId</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">LocationId</dt>
+            <dd class="col-sm-10">@parkingsession.LocationId</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">VehicleId</dt>
+            <dd class="col-sm-10">@parkingsession.VehicleId</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">DateCreated</dt>
+            <dd class="col-sm-10">@parkingsession.DateCreated</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">DateUpdated</dt>
+            <dd class="col-sm-10">@parkingsession.DateUpdated</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">CreatedBy</dt>
+            <dd class="col-sm-10">@parkingsession.CreatedBy</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">UpdatedBy</dt>
+            <dd class="col-sm-10">@parkingsession.UpdatedBy</dd>
+        </dl>
+        <EditForm method="post" Model="parkingsession" OnValidSubmit="DeleteParkingSession" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(parkingsession is null)">Delete</button> |
+            <a href="/parkingsessions">Back to List</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private ParkingSession? parkingsession;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        parkingsession = await context.ParkingSession.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (parkingsession is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteParkingSession()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.ParkingSession.Remove(parkingsession!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/parkingsessions");
+    }
+}
